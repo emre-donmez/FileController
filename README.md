@@ -55,36 +55,7 @@ This endpoint creates a new user identity (token) and associates a folder with t
 }
 ```
 
-### 2. Creating a Folder
-
-To create a folder associated with the generated token, follow these steps:
-
-**Endpoint:** `POST /api/File/CreatePath`
-
-This endpoint creates a folder associated with the specified token.
-
-**Input Parameters:**
-- `Token`: User identity (token) for which the folder will be created.
-- `Path`: Specifies the path of the folder to be created.
-
-**Example Request:**
-
-```json
-{
-    "token": "a33bdcb8-6c32-4f77-a7ab-722e3b2d5420",
-    "path": "images"
-}
-```
-
-**Example Response:**
-```json
-200 OK
-{
-    "path": "images"
-}
-```
-
-### 3. Upload File
+### 2. Upload File
 
 **Endpoint:** `POST /api/File/UploadFile`
 
@@ -92,7 +63,6 @@ This endpoint uploads a file to the specified path.
 
 **Input Parameters:**
 - `Token`: User identity where files will be uploaded.
-- `Path`: Path where the file will be uploaded.
 - `File`: File to be uploaded.
 
 **Success Status:** 200 OK
@@ -104,7 +74,6 @@ POST /api/File/UploadFile
 Content-Type: multipart/form-data
 
 token: a33bdcb8-6c32-4f77-a7ab-722e3b2d5420
-path: uploads/documents
 file: [Binary Data]
 ```
 
@@ -113,10 +82,13 @@ file: [Binary Data]
 200 OK
 {
     "token": "a33bdcb8-6c32-4f77-a7ab-722e3b2d5420",
-    "path": "images",
-    "createdFiles": {
-        "1ed6ec5e-5e5c-4c09-94ab-28f6a96417ae": "example.png"
-    }
+    "files": [
+        {
+            "id": "1ed6ec5e-5e5c-4c09-94ab-28f6a96417ae",
+            "createdFileName": "example1.png",
+            "path": "images"
+        }
+    ]    
 }
 ```
 
@@ -128,13 +100,7 @@ This endpoint uploads multiple files to the specified path.
 
 **Input Parameters:**
 - `Token`: User identity where files will be uploaded.
-- `Path`: Path where the files will be uploaded.
 - `Files`: List of files to be uploaded.
 
 **Success Status:** 200 OK
 - Returns a response containing details of the files created after a successful upload operation.
-
-
-
-
-
