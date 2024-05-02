@@ -4,6 +4,5 @@
     {
         public string Token { get; set; }
         public List<IFormFile> Files { get; set; }
-        public string Path { get; set; }
     }
 }

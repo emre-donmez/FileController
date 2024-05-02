@@ -14,18 +14,24 @@ namespace FileController.Controllers
         public async Task<IActionResult> UploadFile([FromForm] FileCreateRequest fileCreateRequest)
         {
             if (fileCreateRequest == null || fileCreateRequest.Token == null || fileCreateRequest.File == null)
-                return BadRequest("Missing required fields: Token, File, Path");
+                return BadRequest("Missing required fields: Token, File");
 
             try
             {
                 Guid fileId = Guid.NewGuid();
 
+                string tokenPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", fileCreateRequest.Token);
+
+                if (!Directory.Exists(tokenPath))
+                    return BadRequest("There is no folder for this token, create a token first.");
+
+                string path = fileCreateRequest.File.ContentType.Split('/')[0];
+
+                string folderPath = Path.Combine(tokenPath, path);
+
+                Directory.CreateDirectory(folderPath);
+
                 FileInfo fileInfo = new FileInfo(fileCreateRequest.File.FileName);
-
-                string folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", fileCreateRequest.Token, fileCreateRequest.Path.TrimStart('/'));
-
-                if (!Directory.Exists(folderPath))
-                    return BadRequest("There is no folder for this path, create a path first.");
 
                 string fileName = $"{fileId}{fileInfo.Extension}";
 
@@ -36,12 +42,12 @@ namespace FileController.Controllers
                     await fileCreateRequest.File.CopyToAsync(stream);
                 }
 
-                var filesDictionary = new Dictionary<Guid, string> { { fileId, fileCreateRequest.File.FileName } };
                 var response = new FileCreateResponse
                 {
                     Token = fileCreateRequest.Token,
-                    Path = fileCreateRequest.Path,
-                    CreatedFiles = filesDictionary
+                    Files = new List<FileCreateInfo> {
+                        new FileCreateInfo() { Id = fileId, CreatedFileName = fileCreateRequest.File.FileName, Path = path }
+                    }
                 };
 
                 return Ok(response);
@@ -56,22 +62,28 @@ namespace FileController.Controllers
         public async Task<IActionResult> UploadFiles([FromForm] FilesCreateRequest fileCreateRequest)
         {
             if (fileCreateRequest == null || fileCreateRequest.Token == null || fileCreateRequest.Files.Count == 0)
-                return BadRequest("Missing required fields: Token, Files, Path");
+                return BadRequest("Missing required fields: Token, Files");
 
             try
             {
-                string folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", fileCreateRequest.Token, fileCreateRequest.Path.TrimStart('/'));
+                string tokenPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", fileCreateRequest.Token);
 
-                if (!Directory.Exists(folderPath))
-                    return BadRequest("There is no folder for this path, create a path first.");
+                if (!Directory.Exists(tokenPath))
+                    return BadRequest("There is no folder for this token, create a token first.");
 
-                var filesDictionary = new Dictionary<Guid, string>();
+                var createdFiles = new List<FileCreateInfo>();
 
                 foreach (var file in fileCreateRequest.Files)
                 {
                     Guid fileId = Guid.NewGuid();
 
                     FileInfo fileInfo = new FileInfo(file.FileName);
+
+                    string path = file.ContentType.Split('/')[0];
+
+                    string folderPath = Path.Combine(tokenPath, path);
+
+                    Directory.CreateDirectory(folderPath);
 
                     string fileName = $"{fileId}{fileInfo.Extension}";
 
@@ -82,14 +94,13 @@ namespace FileController.Controllers
                         await file.CopyToAsync(stream);
                     }
 
-                    filesDictionary.Add(fileId, file.FileName);
+                    createdFiles.Add(new FileCreateInfo { Id = fileId, CreatedFileName = file.FileName, Path = path });
                 }
 
                 var response = new FileCreateResponse
                 {
                     Token = fileCreateRequest.Token,
-                    Path = fileCreateRequest.Path,
-                    CreatedFiles = filesDictionary
+                    Files = createdFiles,
                 };
 
                 return Ok(response);
@@ -98,24 +109,6 @@ namespace FileController.Controllers
             {
                 return StatusCode(500, $"An error occurred while processing the request: {e.Message}");
             }
-        }
-
-        [HttpPost("CreatePath")]
-        public async Task<IActionResult> CreatePath([FromBody] PathCreateRequest pathCreateRequest)
-        {
-            string tokenPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", pathCreateRequest.Token);
-
-            if (!Directory.Exists(tokenPath))
-                return BadRequest("There is no folder for this token, create a token first.");
-
-            string folderPath = Path.Combine(tokenPath, pathCreateRequest.Path.TrimStart('/'));
-
-            if (Directory.Exists(folderPath))
-                return BadRequest("This path already exists");
-
-            var result = Directory.CreateDirectory(folderPath);
-
-            return Ok(pathCreateRequest.Path);
         }
 
         [HttpPost("CreateToken")]
@@ -129,6 +122,7 @@ namespace FileController.Controllers
 
             return Ok(guid);
         }
+
         private async Task<IActionResult> GetFolderContent(string token, string path = "")
         {
             string folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", token, path);
@@ -177,7 +171,7 @@ namespace FileController.Controllers
 
                 string filePath = fileNames[0];
 
-                var fileInfo = new FileInfo(filePath);             
+                var fileInfo = new FileInfo(filePath);
 
                 var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
 
